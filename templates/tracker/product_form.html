@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Add product · Midnight{% endblock %}
+{% block content %}
+  <div class="row justify-content-center">
+    <div class="col-lg-7">
+      <h1 class="page-heading mb-4">Add product</h1>
+      <div class="card card-flat p-4">
+        <form method="post" novalidate>
+          {% csrf_token %}
+          {% for field in form %}
+            <div class="mb-3">
+              <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+              {{ field.errors }}
+              {{ field }}
+              {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+            </div>
+          {% endfor %}
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-midnight">Save</button>
+            <a class="btn btn-outline-secondary border-0" href="{% url 'tracker:product_list' %}">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+{% endblock %}

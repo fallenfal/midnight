@@ -1,0 +1,132 @@
+/* Midnight — flat, minimal; brand: midnight blue */
+
+:root {
+  --midnight: #0d1b2a;
+  --midnight-hover: #1b263b;
+  --midnight-muted: #415a77;
+  --surface: #ffffff;
+  --bg: #f4f6f8;
+  --text: #1a1a1a;
+  --border: #e2e6ea;
+  --warn-bg: #fff3cd;
+  --warn-text: #856404;
+  --danger-bg: #f8d7da;
+  --danger-text: #721c24;
+}
+
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: var(--text);
+  background-color: var(--bg);
+  min-height: 100vh;
+}
+
+a {
+  color: var(--midnight);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--midnight-hover);
+  text-decoration: underline;
+}
+
+.navbar-midnight {
+  background-color: var(--midnight);
+  border: none;
+  box-shadow: none;
+}
+
+.navbar-midnight .navbar-brand,
+.navbar-midnight .nav-link {
+  color: #e8eef4 !important;
+}
+
+.navbar-midnight .nav-link:hover,
+.navbar-midnight .nav-link:focus {
+  color: #ffffff !important;
+}
+
+.navbar-midnight .nav-link.active {
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.btn-midnight {
+  background-color: var(--midnight);
+  border-color: var(--midnight);
+  color: #fff;
+}
+
+.btn-midnight:hover {
+  background-color: var(--midnight-hover);
+  border-color: var(--midnight-hover);
+  color: #fff;
+}
+
+.btn-outline-midnight {
+  color: var(--midnight);
+  border-color: var(--midnight);
+  background: transparent;
+}
+
+.btn-outline-midnight:hover {
+  background-color: var(--midnight);
+  border-color: var(--midnight);
+  color: #fff;
+}
+
+.card-flat {
+  border: 1px solid var(--border);
+  border-radius: 0.25rem;
+  box-shadow: none;
+  background: var(--surface);
+}
+
+.page-heading {
+  color: var(--midnight);
+  font-weight: 600;
+}
+
+.badge-soon {
+  background-color: var(--warn-bg);
+  color: var(--warn-text);
+  border: 1px solid #ffeeba;
+  font-weight: 500;
+}
+
+.badge-expired {
+  background-color: var(--danger-bg);
+  color: var(--danger-text);
+  border: 1px solid #f5c6cb;
+  font-weight: 500;
+}
+
+.text-muted-soft {
+  color: var(--midnight-muted) !important;
+}
+
+.table-midnight thead th {
+  background-color: var(--midnight);
+  color: #e8eef4;
+  border-color: var(--midnight);
+  font-weight: 500;
+}
+
+.table-midnight tbody td {
+  vertical-align: middle;
+  border-color: var(--border);
+}
+
+footer.site-footer {
+  border-top: 1px solid var(--border);
+  margin-top: auto;
+  padding: 1.5rem 0;
+  color: var(--midnight-muted);
+  font-size: 0.875rem;
+}
+
+main.main-content {
+  padding-bottom: 3rem;
+}

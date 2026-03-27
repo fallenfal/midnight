@@ -1,0 +1,75 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Midnight{% endblock %}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+  <link rel="stylesheet" href="{% static 'css/midnight.css' %}">
+  {% block extra_css %}{% endblock %}
+</head>
+<body class="d-flex flex-column min-vh-100">
+  <nav class="navbar navbar-expand-lg navbar-dark navbar-midnight mb-4">
+    <div class="container">
+      <a class="navbar-brand fw-semibold" href="{% url 'tracker:home' %}">Midnight</a>
+      <button class="navbar-toggler border-0 text-white" type="button" data-bs-toggle="collapse" data-bs-target="#navMain" aria-controls="navMain" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navMain">
+        <ul class="navbar-nav ms-auto gap-lg-2">
+          {% if user.is_authenticated %}
+            <li class="nav-item">
+              <a class="nav-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}" href="{% url 'tracker:home' %}">Home</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link {% if request.resolver_match.url_name == 'product_list' or request.resolver_match.url_name == 'product_create' %}active{% endif %}" href="{% url 'tracker:product_list' %}">Products</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link {% if request.resolver_match.url_name == 'daily_list_create' %}active{% endif %}" href="{% url 'tracker:daily_list_create' %}">New list</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link {% if 'history' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'tracker:history_list' %}">History</a>
+            </li>
+            {% if user.is_master %}
+              <li class="nav-item">
+                <a class="nav-link {% if request.resolver_match.url_name == 'admin_users' or request.resolver_match.url_name == 'admin_user_edit' %}active{% endif %}" href="{% url 'tracker:admin_users' %}">Users</a>
+              </li>
+            {% endif %}
+            <li class="nav-item">
+              <span class="nav-link text-white-50 small">{{ user.username }}</span>
+            </li>
+            <li class="nav-item">
+              <form action="{% url 'tracker:logout' %}" method="post" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-outline-light">Log out</button>
+              </form>
+            </li>
+          {% else %}
+            <li class="nav-item"><a class="nav-link" href="{% url 'tracker:login' %}">Log in</a></li>
+            <li class="nav-item"><a class="nav-link" href="{% url 'tracker:register' %}">Register</a></li>
+          {% endif %}
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container main-content flex-grow-1">
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags|default:'info' }} border-0 rounded-1 mb-3" role="alert">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer mt-auto">
+    <div class="container text-center">
+      <span>Midnight · Expiration tracking</span>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

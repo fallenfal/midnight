@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}New daily list · Midnight{% endblock %}
+{% block content %}
+  <h1 class="page-heading mb-2">Create daily list</h1>
+  <p class="text-muted-soft mb-4">Enter an expiration date for each product you want to record. Leave a row blank to skip that product.</p>
+
+  {% if not products %}
+    <div class="card card-flat p-5 text-center text-muted-soft">
+      <p class="mb-3">You need at least one product before creating a list.</p>
+      <a class="btn btn-midnight" href="{% url 'tracker:product_create' %}">Add a product</a>
+    </div>
+  {% else %}
+    <form method="post" class="card card-flat p-0 overflow-hidden">
+      {% csrf_token %}
+      <div class="table-responsive">
+        <table class="table table-midnight mb-0">
+          <thead>
+            <tr>
+              <th scope="col">Product</th>
+              <th scope="col">Description</th>
+              <th scope="col" style="min-width: 11rem;">Expiration date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in products %}
+              <tr>
+                <td class="fw-medium">{{ p.name }}</td>
+                <td class="text-muted-soft small">{{ p.description|default:"—"|truncatewords:16 }}</td>
+                <td>
+                  <input type="date" class="form-control form-control-sm" name="exp_{{ p.pk }}" id="exp_{{ p.pk }}">
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="p-3 border-top" style="border-color: var(--border) !important;">
+        <button type="submit" class="btn btn-midnight">Save list</button>
+        <a class="btn btn-link text-muted-soft text-decoration-none" href="{% url 'tracker:home' %}">Back</a>
+      </div>
+    </form>
+  {% endif %}
+{% endblock %}

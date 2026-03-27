@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Users · Midnight{% endblock %}
+{% block content %}
+  <h1 class="page-heading mb-2">Admin · Users</h1>
+  <p class="text-muted-soft mb-4">Manage registered accounts. Master users can delete daily lists and access this page.</p>
+
+  <div class="table-responsive card card-flat p-0">
+    <table class="table table-midnight mb-0">
+      <thead>
+        <tr>
+          <th scope="col">Username</th>
+          <th scope="col">Email</th>
+          <th scope="col">Master</th>
+          <th scope="col">Active</th>
+          <th scope="col" class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+          <tr>
+            <td class="fw-medium">{{ u.username }}</td>
+            <td class="text-muted-soft">{{ u.email|default:"—" }}</td>
+            <td>{% if u.is_master %}Yes{% else %}No{% endif %}</td>
+            <td>{% if u.is_active %}Yes{% else %}No{% endif %}</td>
+            <td class="text-end">
+              <a class="btn btn-sm btn-outline-midnight" href="{% url 'tracker:admin_user_edit' u.pk %}">Edit</a>
+              {% if u.pk != request.user.pk %}
+                <form method="post" action="{% url 'tracker:admin_user_delete' u.pk %}" class="d-inline" onsubmit="return confirm('Delete user {{ u.username }}?');">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-sm btn-outline-danger border-0">Delete</button>
+                </form>
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="5" class="text-center text-muted-soft py-4">No users.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

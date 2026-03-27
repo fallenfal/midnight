@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Products · Midnight{% endblock %}
+{% block content %}
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+    <h1 class="page-heading mb-0">Products</h1>
+    <a class="btn btn-midnight" href="{% url 'tracker:product_create' %}">Add product</a>
+  </div>
+  {% if not products %}
+    <div class="card card-flat p-5 text-center text-muted-soft">
+      <p class="mb-3">No products yet. Add items to use them in daily expiration lists.</p>
+      <a class="btn btn-outline-midnight" href="{% url 'tracker:product_create' %}">Add your first product</a>
+    </div>
+  {% else %}
+    <div class="table-responsive card card-flat p-0">
+      <table class="table table-midnight table-hover mb-0">
+        <thead>
+          <tr>
+            <th scope="col">Name</th>
+            <th scope="col">Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in products %}
+            <tr>
+              <td class="fw-medium">{{ p.name }}</td>
+              <td class="text-muted-soft">{{ p.description|default:"—"|truncatewords:24 }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+{% endblock %}
