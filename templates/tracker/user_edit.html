@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Edit {{ object.username }} · Midnight{% endblock %}
+{% block content %}
+  <div class="row justify-content-center">
+    <div class="col-lg-7">
+      <h1 class="page-heading mb-4">Edit user</h1>
+      <div class="card card-flat p-4">
+        <form method="post" novalidate>
+          {% csrf_token %}
+          {% for field in form %}
+            {% if field.name == 'is_active' or field.name == 'is_master' %}
+              <div class="mb-3 form-check">
+                {{ field }}
+                <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field.errors }}
+              </div>
+            {% else %}
+              <div class="mb-3">
+                <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field.errors }}
+                {{ field }}
+                {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+              </div>
+            {% endif %}
+          {% endfor %}
+          <div class="d-flex gap-2 mt-2">
+            <button type="submit" class="btn btn-midnight">Save</button>
+            <a class="btn btn-outline-secondary border-0" href="{% url 'tracker:admin_users' %}">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+{% endblock %}

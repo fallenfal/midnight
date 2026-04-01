@@ -1,0 +1,30 @@
+# Ubuntu 24.04 systemd: /etc/systemd/system/midnight.service
+# sudo systemctl daemon-reload && sudo systemctl restart midnight
+#
+# Gunicorn 25+ uses a control socket under $XDG_RUNTIME_DIR or $HOME/.gunicorn/
+# www-data's HOME is /var/www (not writable) → Permission denied without this.
+# RuntimeDirectory gives /run/midnight; XDG_RUNTIME_DIR puts the socket there.
+
+[Unit]
+Description=Midnight (Gunicorn)
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/srv/midnight
+Environment=HOME=/srv/midnight
+Environment=XDG_RUNTIME_DIR=/run/midnight
+EnvironmentFile=/srv/midnight/.env
+RuntimeDirectory=midnight
+ExecStart=/srv/midnight/.venv/bin/gunicorn \
+    --bind 127.0.0.1:8000 \
+    --workers 3 \
+    --timeout 60 \
+    --pid /run/midnight/gunicorn.pid \
+    midnight.wsgi:application
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}List {{ daily_list.pk }} · Midnight{% endblock %}
+{% block content %}
+  <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+    <div>
+      <h1 class="page-heading mb-1">Daily list</h1>
+      <p class="text-muted-soft mb-0">
+        Created {{ daily_list.created_at|date:"Y-m-d H:i" }}
+        {% if daily_list.created_by %}· {{ daily_list.created_by.username }}{% endif %}
+      </p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <a class="btn btn-outline-midnight" href="{% url 'tracker:history_list' %}">All history</a>
+      {% if can_delete %}
+        <form method="post" action="{% url 'tracker:daily_list_delete' daily_list.pk %}" class="d-inline" onsubmit="return confirm('Delete this daily list permanently?');">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-outline-danger border-0">Delete list</button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <p class="small text-muted-soft mb-3">
+    Highlights: <span class="badge badge-soon">Within 7 days of list date</span>
+    <span class="badge badge-expired ms-1">Already expired (before list date)</span>
+  </p>
+
+  <div class="table-responsive card card-flat p-0">
+    <table class="table table-midnight mb-0">
+      <thead>
+        <tr>
+          <th scope="col">Product</th>
+          <th scope="col">Expiration date</th>
+          <th scope="col">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+          {% with e=row.entry %}
+            <tr>
+              <td class="fw-medium">{{ e.product.name }}</td>
+              <td>{{ e.expiration_date|date:"Y-m-d" }}</td>
+              <td>
+                {% if row.state == 'soon' %}
+                  <span class="badge badge-soon">Within 7 days</span>
+                {% elif row.state == 'expired' %}
+                  <span class="badge badge-expired">Expired</span>
+                {% else %}
+                  <span class="text-muted-soft">—</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endwith %}
+        {% empty %}
+          <tr>
+            <td colspan="3" class="text-muted-soft text-center py-4">No entries on this list.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

@@ -1,0 +1,9 @@
+# Core
+Django>=5.0,<7
+python-dotenv>=1.0
+
+# Production WSGI
+gunicorn>=22.0
+
+# Required when USE_POSTGRES=1 (VPS / production)
+psycopg2-binary>=2.9

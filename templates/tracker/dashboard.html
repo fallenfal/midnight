@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · Midnight{% endblock %}
+{% block content %}
+  <h1 class="page-heading mb-4">Dashboard</h1>
+  <p class="text-muted-soft lead mb-4">Track product expiration dates with daily checklists and a clear history.</p>
+  <div class="row g-4">
+    <div class="col-md-6">
+      <div class="card card-flat p-4 h-100">
+        <h2 class="h5 mb-3" style="color: var(--midnight);">Products</h2>
+        <p class="text-muted-soft mb-3">Maintain your inventory items, then build expiration lists from them.</p>
+        <a class="btn btn-midnight" href="{% url 'tracker:product_list' %}">View products</a>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card card-flat p-4 h-100">
+        <h2 class="h5 mb-3" style="color: var(--midnight);">Daily list</h2>
+        <p class="text-muted-soft mb-3">Create a new checklist and enter expiration dates for every product in one batch.</p>
+        <a class="btn btn-midnight" href="{% url 'tracker:daily_list_create' %}">Create new list</a>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card card-flat p-4 h-100">
+        <h2 class="h5 mb-3" style="color: var(--midnight);">History</h2>
+        <p class="text-muted-soft mb-3">Browse past lists with read-only detail and soon-to-expire highlights.</p>
+        <a class="btn btn-outline-midnight" href="{% url 'tracker:history_list' %}">View history</a>
+      </div>
+    </div>
+    {% if user.is_master %}
+      <div class="col-md-6">
+        <div class="card card-flat p-4 h-100">
+          <h2 class="h5 mb-3" style="color: var(--midnight);">User management</h2>
+          <p class="text-muted-soft mb-3">Master accounts can manage registered users and remove saved daily lists.</p>
+          <a class="btn btn-outline-midnight" href="{% url 'tracker:admin_users' %}">Manage users</a>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}
