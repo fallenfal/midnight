@@ -44,8 +44,16 @@ class RegisterView(CreateView):
     success_url = reverse_lazy("tracker:login")
 
     def form_valid(self, form):
-        messages.success(self.request, "Account created. You can sign in now.")
-        return super().form_valid(form)
+        user = form.save(commit=False)
+        user.is_approved = False
+        user.is_active = True
+        user.save()
+        form.save_m2m()
+        messages.success(
+            self.request,
+            "Account request submitted. A master user must approve your account before you can sign in.",
+        )
+        return redirect(self.success_url)
 
 
 class AppLoginView(LoginView):
@@ -62,6 +70,9 @@ class ProductListView(LoginRequiredMixin, ListView):
     template_name = "tracker/product_list.html"
     context_object_name = "products"
 
+    def get_queryset(self):
+        return Product.objects.filter(location=self.request.user.location)
+
 
 class ProductCreateView(LoginRequiredMixin, CreateView):
     model = Product
@@ -70,6 +81,7 @@ class ProductCreateView(LoginRequiredMixin, CreateView):
     success_url = reverse_lazy("tracker:product_list")
 
     def form_valid(self, form):
+        form.instance.location = self.request.user.location
         messages.success(self.request, "Product added.")
         return super().form_valid(form)
 
@@ -79,17 +91,20 @@ class DailyListCreateView(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx["products"] = Product.objects.all()
+        ctx["products"] = Product.objects.filter(location=self.request.user.location)
         return ctx
 
     def post(self, request, *args, **kwargs):
-        products = list(Product.objects.all())
+        products = list(Product.objects.filter(location=request.user.location))
         if not products:
             messages.warning(request, "Add at least one product before creating a list.")
             return redirect("tracker:daily_list_create")
 
         with transaction.atomic():
-            dl = DailyList.objects.create(created_by=request.user)
+            dl = DailyList.objects.create(
+                created_by=request.user,
+                location=request.user.location,
+            )
             saved = 0
             for product in products:
                 key = f"exp_{product.pk}"
@@ -123,13 +138,20 @@ class HistoryListView(LoginRequiredMixin, ListView):
     context_object_name = "daily_lists"
     paginate_by = getattr(settings, "DEFAULT_PAGINATION_PER_PAGE", 10)
 
+    def get_queryset(self):
+        return DailyList.objects.filter(location=self.request.user.location)
+
 
 class HistoryDetailView(LoginRequiredMixin, TemplateView):
     template_name = "tracker/history_detail.html"
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        dl = get_object_or_404(DailyList.objects.select_related("created_by"), pk=self.kwargs["pk"])
+        dl = get_object_or_404(
+            DailyList.objects.select_related("created_by"),
+            pk=self.kwargs["pk"],
+            location=self.request.user.location,
+        )
         entries = (
             ExpirationEntry.objects.filter(daily_list=dl)
             .select_related("product")
@@ -148,7 +170,7 @@ class HistoryDetailView(LoginRequiredMixin, TemplateView):
 
 class DailyListDeleteView(MasterRequiredMixin, View):
     def post(self, request, pk):
-        dl = get_object_or_404(DailyList, pk=pk)
+        dl = get_object_or_404(DailyList, pk=pk, location=request.user.location)
         dl.delete()
         messages.success(request, "Daily list deleted.")
         return redirect("tracker:history_list")
@@ -158,7 +180,9 @@ class MasterUserListView(MasterRequiredMixin, ListView):
     model = User
     template_name = "tracker/admin_users.html"
     context_object_name = "users"
-    ordering = ["username"]
+
+    def get_queryset(self):
+        return User.objects.select_related("location").order_by("location__name", "username")
 
 
 class MasterUserUpdateView(MasterRequiredMixin, UpdateView):

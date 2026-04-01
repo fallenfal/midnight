@@ -115,6 +115,9 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# USERNAME_FIELD is per-location unique, not globally unique (see LocationBackend).
+SILENCED_SYSTEM_CHECKS = ["auth.W004"]
+
 MESSAGE_TAGS = {
     message_constants.DEBUG: "secondary",
     message_constants.INFO: "info",
@@ -124,6 +127,11 @@ MESSAGE_TAGS = {
 }
 
 AUTH_USER_MODEL = "tracker.User"
+
+AUTHENTICATION_BACKENDS = [
+    "tracker.auth_backends.LocationBackend",
+    "django.contrib.auth.backends.ModelBackend",
+]
 
 LOGIN_URL = "tracker:login"
 LOGIN_REDIRECT_URL = "tracker:dashboard"

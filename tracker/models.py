@@ -2,25 +2,12 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 
 
-class User(AbstractUser):
-    """Extended user with Master/Admin flag for elevated permissions."""
+class Location(models.Model):
+    """A tenant/city. All business data is scoped to a location."""
 
-    is_master = models.BooleanField(
-        default=False,
-        help_text="Designates whether this user can manage other users and delete daily lists.",
-    )
-
-    def __str__(self):
-        return self.username
-
-
-class Product(models.Model):
-    """Base inventory item."""
-
-    name = models.CharField(max_length=255)
-    description = models.TextField(blank=True)
+    name = models.CharField(max_length=255, unique=True)
+    slug = models.SlugField(max_length=64, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ["name"]
@@ -29,9 +16,77 @@ class Product(models.Model):
         return self.name
 
 
+class User(AbstractUser):
+    """Extended user with Master/Admin flag for elevated permissions."""
+
+    # Override AbstractUser.username (which is globally unique by default) so we can
+    # enforce uniqueness per location instead.
+    username = models.CharField(max_length=150)
+
+    location = models.ForeignKey(
+        Location,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="users",
+    )
+
+    is_approved = models.BooleanField(
+        default=False,
+        help_text="If false, the user cannot sign in until approved by a master user.",
+    )
+
+    is_master = models.BooleanField(
+        default=False,
+        help_text="Designates whether this user can manage other users and delete daily lists.",
+    )
+
+    class Meta(AbstractUser.Meta):
+        constraints = [
+            models.UniqueConstraint(
+                fields=["location", "username"],
+                name="unique_username_per_location",
+            )
+        ]
+
+    def __str__(self):
+        return self.username
+
+
+class Product(models.Model):
+    """Base inventory item."""
+
+    location = models.ForeignKey(
+        Location,
+        on_delete=models.CASCADE,
+        related_name="products",
+    )
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["location", "name"],
+                name="unique_product_name_per_location",
+            )
+        ]
+
+    def __str__(self):
+        return self.name
+
+
 class DailyList(models.Model):
     """A single expiration check session for one day."""
 
+    location = models.ForeignKey(
+        Location,
+        on_delete=models.CASCADE,
+        related_name="daily_lists",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(
         User,

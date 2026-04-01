@@ -8,8 +8,10 @@
     <table class="table table-midnight mb-0">
       <thead>
         <tr>
+          <th scope="col">Location</th>
           <th scope="col">Username</th>
           <th scope="col">Email</th>
+          <th scope="col">Approved</th>
           <th scope="col">Master</th>
           <th scope="col">Active</th>
           <th scope="col" class="text-end">Actions</th>
@@ -18,8 +20,10 @@
       <tbody>
         {% for u in users %}
           <tr>
+            <td class="text-muted-soft">{{ u.location.name|default:"—" }}</td>
             <td class="fw-medium">{{ u.username }}</td>
             <td class="text-muted-soft">{{ u.email|default:"—" }}</td>
+            <td>{% if u.is_approved %}Yes{% else %}No{% endif %}</td>
             <td>{% if u.is_master %}Yes{% else %}No{% endif %}</td>
             <td>{% if u.is_active %}Yes{% else %}No{% endif %}</td>
             <td class="text-end">
@@ -34,7 +38,7 @@
           </tr>
         {% empty %}
           <tr>
-            <td colspan="5" class="text-center text-muted-soft py-4">No users.</td>
+            <td colspan="7" class="text-center text-muted-soft py-4">No users.</td>
           </tr>
         {% endfor %}
       </tbody>

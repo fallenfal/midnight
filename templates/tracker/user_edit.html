@@ -8,7 +8,7 @@
         <form method="post" novalidate>
           {% csrf_token %}
           {% for field in form %}
-            {% if field.name == 'is_active' or field.name == 'is_master' %}
+            {% if field.name == 'is_active' or field.name == 'is_approved' or field.name == 'is_master' %}
               <div class="mb-3 form-check">
                 {{ field }}
                 <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>

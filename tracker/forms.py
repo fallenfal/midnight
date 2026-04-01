@@ -1,7 +1,10 @@
+from collections import OrderedDict
+
 from django import forms
 from django.contrib.auth.forms import AuthenticationForm, UserChangeForm, UserCreationForm
+from django.contrib.auth import authenticate
 
-from .models import Product, User
+from .models import Location, Product, User
 
 
 def _bootstrap_widgets(form):
@@ -16,7 +19,7 @@ def _bootstrap_widgets(form):
 class RegisterForm(UserCreationForm):
     class Meta(UserCreationForm.Meta):
         model = User
-        fields = ("username", "email")
+        fields = ("location", "username", "email")
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -24,9 +27,33 @@ class RegisterForm(UserCreationForm):
 
 
 class AppLoginForm(AuthenticationForm):
+    location = forms.ModelChoiceField(queryset=Location.objects.none(), empty_label=None)
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields["location"].queryset = Location.objects.all()
+        self.fields = OrderedDict(
+            (k, self.fields[k]) for k in ("location", "username", "password") if k in self.fields
+        )
         _bootstrap_widgets(self)
+
+    def clean(self):
+        username = self.cleaned_data.get("username")
+        password = self.cleaned_data.get("password")
+        location = self.cleaned_data.get("location")
+        if not username or not password or not location:
+            return self.cleaned_data
+
+        self.user_cache = authenticate(
+            self.request,
+            username=username,
+            password=password,
+            location=location,
+        )
+        if self.user_cache is None:
+            raise self.get_invalid_login_error()
+        self.confirm_login_allowed(self.user_cache)
+        return self.cleaned_data
 
 
 class ProductForm(forms.ModelForm):
@@ -47,7 +74,16 @@ class MasterUserEditForm(UserChangeForm):
 
     class Meta:
         model = User
-        fields = ("username", "email", "first_name", "last_name", "is_active", "is_master")
+        fields = (
+            "location",
+            "username",
+            "email",
+            "first_name",
+            "last_name",
+            "is_active",
+            "is_approved",
+            "is_master",
+        )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
