@@ -47,6 +47,11 @@
             </div>
           </div>
 
+          <a class="sidebar-link {% if url_name == 'training_list' or url_name == 'training_detail' or url_name == 'training_create' %}active{% endif %}" href="{% url 'tracker:training_list' %}">
+            <span class="sidebar-link-icon sidebar-icon-trainings" aria-hidden="true"></span>
+            Trainings
+          </a>
+
           {% if user.is_master %}
             <a class="sidebar-link {% if url_name == 'admin_users' or url_name == 'admin_user_edit' or url_name == 'admin_user_delete' %}active{% endif %}" href="{% url 'tracker:admin_users' %}">
               <span class="sidebar-link-icon sidebar-icon-users" aria-hidden="true"></span>

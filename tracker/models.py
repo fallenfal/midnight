@@ -128,3 +128,52 @@ class ExpirationEntry(models.Model):
 
     def __str__(self):
         return f"{self.product} → {self.expiration_date}"
+
+
+class Training(models.Model):
+    """A multi-step training post created by master users."""
+
+    location = models.ForeignKey(
+        Location,
+        on_delete=models.CASCADE,
+        related_name="trainings",
+    )
+    title = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="trainings_created",
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return self.title
+
+
+def _training_step_upload_to(instance, filename: str) -> str:
+    loc = getattr(instance.training, "location_id", "unknown")
+    training_id = getattr(instance.training, "id", "new")
+    return f"trainings/{loc}/{training_id}/{filename}"
+
+
+class TrainingStep(models.Model):
+    training = models.ForeignKey(
+        Training,
+        on_delete=models.CASCADE,
+        related_name="steps",
+    )
+    order = models.PositiveIntegerField(default=0)
+    title = models.CharField(max_length=255)
+    description = models.TextField()
+    image = models.ImageField(upload_to=_training_step_upload_to, blank=True)
+    image_url = models.URLField(blank=True)
+
+    class Meta:
+        ordering = ["order", "id"]
+
+    def __str__(self):
+        return f"{self.training}: {self.order + 1}. {self.title}"

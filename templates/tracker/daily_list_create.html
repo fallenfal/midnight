@@ -4,10 +4,44 @@
   <h1 class="page-heading mb-2">Create daily list</h1>
   <p class="text-muted-soft mb-4">Enter an expiration date for each product you want to record. Leave a row blank to skip that product.</p>
 
+  <div class="card card-flat p-4 mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+      <div class="d-flex align-items-center gap-2">
+        <button
+          class="btn btn-sm btn-outline-midnight"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#addProductCollapse"
+          aria-expanded="false"
+          aria-controls="addProductCollapse"
+        >
+          Add product
+        </button>
+        <a class="btn btn-sm btn-outline-secondary border-0" href="{% url 'tracker:product_list' %}">Manage products</a>
+      </div>
+      <span class="text-muted-soft small">Optional</span>
+    </div>
+
+    <div class="collapse mt-3" id="addProductCollapse">
+      <form method="post" novalidate>
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add_product">
+        {% for field in product_form %}
+          <div class="mb-3">
+            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field.errors }}
+            {{ field }}
+            {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+          </div>
+        {% endfor %}
+        <button type="submit" class="btn btn-outline-midnight">Add to products</button>
+      </form>
+    </div>
+  </div>
+
   {% if not products %}
     <div class="card card-flat p-5 text-center text-muted-soft">
-      <p class="mb-3">You need at least one product before creating a list.</p>
-      <a class="btn btn-midnight" href="{% url 'tracker:product_create' %}">Add a product</a>
+      <p class="mb-0">Add at least one product above to create a list.</p>
     </div>
   {% else %}
     <form method="post" class="card card-flat p-0 overflow-hidden">

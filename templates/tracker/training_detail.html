@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}{{ training.title }} · Trainings · Midnight{% endblock %}
+{% block content %}
+  <style>
+    .step-card { border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
+    .step-grid { display: grid; grid-template-columns: 1fr; gap: 1rem; }
+    @media (min-width: 769px) { .step-grid { grid-template-columns: 280px 1fr; } }
+    .step-img { width: 100%; max-width: 280px; aspect-ratio: 1 / 1; border-radius: 12px; border: 1px solid var(--border); object-fit: cover; background: rgba(0,0,0,.03); }
+  </style>
+
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div class="min-w-0">
+      <h1 class="page-heading mb-1 text-truncate">{{ training.title }}</h1>
+      <div class="text-muted-soft small">
+        {{ steps|length }} step{{ steps|length|pluralize }}
+        {% if training.created_by %} · Created by {{ training.created_by.username }}{% endif %}
+        · {{ training.created_at|date:"M j, Y" }}
+      </div>
+    </div>
+    <div class="d-flex gap-2">
+      <a class="btn btn-outline-secondary border-0" href="{% url 'tracker:training_list' %}">Back</a>
+      {% if user.is_staff or user.is_superuser %}
+        <a class="btn btn-midnight" href="{% url 'tracker:training_create' %}">New training</a>
+      {% endif %}
+    </div>
+  </div>
+
+  {% for s in steps %}
+    <div class="step-card p-4 mb-3">
+      <div class="fw-semibold mb-3">Step {{ forloop.counter }} · {{ s.title }}</div>
+      <div class="step-grid">
+        <div>
+          {% if s.image %}
+            <img class="step-img" src="{{ s.image.url }}" alt="Step {{ forloop.counter }} image">
+          {% elif s.image_url %}
+            <img class="step-img" src="{{ s.image_url }}" alt="Step {{ forloop.counter }} image">
+          {% else %}
+            <div class="text-muted-soft small">No image</div>
+          {% endif %}
+        </div>
+        <div style="white-space: pre-wrap;">{{ s.description }}</div>
+      </div>
+    </div>
+  {% endfor %}
+{% endblock %}

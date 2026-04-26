@@ -1,6 +1,7 @@
 # Core
 Django>=5.0,<7
 python-dotenv>=1.0
+Pillow>=10.0
 
 # Production WSGI
 gunicorn>=22.0

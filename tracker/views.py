@@ -2,7 +2,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.views import LoginView, LogoutView
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy
 from django.utils.dateparse import parse_date
@@ -10,13 +10,19 @@ from django.views import View
 from django.views.generic import CreateView, ListView, TemplateView, UpdateView
 
 from .forms import AppLoginForm, MasterUserEditForm, ProductForm, RegisterForm
-from .models import DailyList, ExpirationEntry, Product, User
+from .models import DailyList, ExpirationEntry, Product, Training, TrainingStep, User
 
 
 class MasterRequiredMixin(UserPassesTestMixin):
     def test_func(self):
         u = self.request.user
         return u.is_authenticated and getattr(u, "is_master", False)
+
+
+class StaffOrSuperuserRequiredMixin(UserPassesTestMixin):
+    def test_func(self):
+        u = self.request.user
+        return u.is_authenticated and (u.is_staff or u.is_superuser)
 
 
 def entry_warning_state(expiration_date, list_created_date):
@@ -92,9 +98,26 @@ class DailyListCreateView(LoginRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx["products"] = Product.objects.filter(location=self.request.user.location)
+        ctx["product_form"] = ProductForm()
         return ctx
 
     def post(self, request, *args, **kwargs):
+        if request.POST.get("action") == "add_product":
+            form = ProductForm(request.POST)
+            if form.is_valid():
+                form.instance.location = request.user.location
+                try:
+                    form.save()
+                except IntegrityError:
+                    messages.error(request, "A product with that name already exists.")
+                else:
+                    messages.success(request, "Product added.")
+                return redirect("tracker:daily_list_create")
+
+            ctx = self.get_context_data(**kwargs)
+            ctx["product_form"] = form
+            return self.render_to_response(ctx)
+
         products = list(Product.objects.filter(location=request.user.location))
         if not products:
             messages.warning(request, "Add at least one product before creating a list.")
@@ -208,4 +231,115 @@ class MasterUserDeleteView(MasterRequiredMixin, View):
         user.delete()
         messages.success(request, "User deleted.")
         return redirect("tracker:admin_users")
+
+
+class TrainingListView(LoginRequiredMixin, TemplateView):
+    template_name = "tracker/training_list.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        trainings = (
+            Training.objects.filter(location=self.request.user.location)
+            .prefetch_related("steps")
+            .select_related("created_by")
+            .order_by("-created_at")
+        )
+        ctx["trainings"] = trainings
+        return ctx
+
+
+class TrainingDetailView(LoginRequiredMixin, TemplateView):
+    template_name = "tracker/training_detail.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        training = get_object_or_404(
+            Training.objects.filter(location=self.request.user.location)
+            .prefetch_related("steps")
+            .select_related("created_by"),
+            pk=self.kwargs["pk"],
+        )
+        ctx["training"] = training
+        ctx["steps"] = list(training.steps.all())
+        return ctx
+
+
+class TrainingCreateView(StaffOrSuperuserRequiredMixin, TemplateView):
+    template_name = "tracker/training_create.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx.setdefault("form_data", {"title": "", "steps": [{"id": "s1", "title": "", "description": "", "image_url": ""}]})
+        ctx.setdefault("errors", {})
+        return ctx
+
+    def post(self, request, *args, **kwargs):
+        if not request.user.location_id:
+            messages.error(request, "Your account has no location set, so you cannot create trainings.")
+            return redirect("tracker:training_list")
+
+        title = (request.POST.get("training_title") or "").strip()
+        step_ids_raw = (request.POST.get("step_ids") or "").strip()
+        step_ids = [s for s in step_ids_raw.split(",") if s.strip()]
+
+        steps = []
+        errors = {}
+
+        if not title:
+            errors["training_title"] = "Training title cannot be empty."
+
+        if not step_ids:
+            errors["steps"] = "Add at least one step."
+
+        for idx, sid in enumerate(step_ids):
+            st = (request.POST.get(f"step_{sid}_title") or "").strip()
+            sd = (request.POST.get(f"step_{sid}_description") or "").strip()
+            su = (request.POST.get(f"step_{sid}_image_url") or "").strip()
+            sf = request.FILES.get(f"step_{sid}_image_file")
+
+            if not st:
+                errors[f"step_{sid}_title"] = "Step title cannot be empty."
+            if not sd:
+                errors[f"step_{sid}_description"] = "Step description cannot be empty."
+
+            steps.append(
+                {
+                    "id": sid,
+                    "title": st,
+                    "description": sd,
+                    "image_url": su,
+                    "has_file": bool(sf),
+                }
+            )
+
+        if errors:
+            ctx = self.get_context_data(**kwargs)
+            ctx["errors"] = errors
+            ctx["form_data"] = {"title": title, "steps": steps or [{"id": "s1", "title": "", "description": "", "image_url": ""}]}
+            return self.render_to_response(ctx)
+
+        tr = Training.objects.create(
+            location=request.user.location,
+            created_by=request.user,
+            title=title,
+        )
+        for order, sid in enumerate(step_ids):
+            st = (request.POST.get(f"step_{sid}_title") or "").strip()
+            sd = (request.POST.get(f"step_{sid}_description") or "").strip()
+            su = (request.POST.get(f"step_{sid}_image_url") or "").strip()
+            sf = request.FILES.get(f"step_{sid}_image_file")
+
+            step = TrainingStep.objects.create(
+                training=tr,
+                order=order,
+                title=st,
+                description=sd,
+                image_url=su,
+            )
+            if sf:
+                step.image = sf
+                step.save(update_fields=["image"])
+
+        messages.success(request, "Training saved.")
+        return redirect("tracker:dashboard")
 

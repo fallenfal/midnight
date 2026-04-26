@@ -1,0 +1,286 @@
+{% extends "base.html" %}
+{% block title %}New training · Midnight{% endblock %}
+{% block content %}
+  <style>
+    .training-step-card { border: 1px solid var(--border); border-radius: 14px; background: var(--surface, #111); }
+    .training-step-header { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: 1rem 1rem .5rem; }
+    .training-step-header .left { display: flex; align-items: center; gap: .75rem; min-width: 0; }
+    .drag-handle { cursor: grab; user-select: none; padding: .25rem .5rem; border-radius: 10px; border: 1px dashed var(--border); color: var(--muted, #9aa); }
+    .step-number { font-weight: 700; }
+    .training-step-body { padding: .75rem 1rem 1rem; }
+    .step-grid { display: grid; grid-template-columns: 1fr; gap: 1rem; }
+    .step-image-wrap { display: flex; flex-direction: column; gap: .5rem; }
+    .step-image-preview { width: 96px; height: 96px; border-radius: 12px; border: 1px solid var(--border); object-fit: cover; background: rgba(255,255,255,.04); }
+    .step-fields { display: flex; flex-direction: column; gap: .75rem; }
+    .field-error { color: var(--bs-danger); font-size: .875rem; }
+    .card-actions { display: flex; justify-content: space-between; gap: .75rem; padding: 1rem; border-top: 1px solid var(--border); }
+
+    /* Desktop: two columns (image left, details right) */
+    @media (min-width: 769px) {
+      .step-grid { grid-template-columns: 280px 1fr; align-items: start; }
+    }
+
+    /* Mobile order: title, image, description */
+    @media (max-width: 768px) {
+      .step-title-row { order: 1; }
+      .step-image-wrap { order: 2; }
+      .step-desc-row { order: 3; }
+      .step-fields { display: flex; flex-direction: column; }
+    }
+  </style>
+
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+      <h1 class="page-heading mb-1">Create training</h1>
+      <p class="text-muted-soft mb-0">Add a title, then create one or more sequential steps.</p>
+    </div>
+    <a class="btn btn-sm btn-outline-secondary border-0" href="{% url 'tracker:dashboard' %}">Back</a>
+  </div>
+
+  <form method="post" enctype="multipart/form-data" novalidate>
+    {% csrf_token %}
+
+    <div class="card card-flat p-4 mb-4">
+      <label class="form-label" for="training_title">Training title</label>
+      <input
+        type="text"
+        id="training_title"
+        name="training_title"
+        class="form-control"
+        value="{{ form_data.title|default:'' }}"
+        required
+      >
+      {% if errors.training_title %}
+        <div class="field-error mt-2">{{ errors.training_title }}</div>
+      {% endif %}
+    </div>
+
+    <input type="hidden" name="step_ids" id="step_ids" value="">
+
+    <div id="steps"></div>
+
+    {% if errors.steps %}
+      <div class="field-error mb-3">{{ errors.steps }}</div>
+    {% endif %}
+
+    <div class="d-flex flex-wrap gap-2 mb-4">
+      <button type="button" class="btn btn-outline-midnight" id="addStepBtn">Add another step</button>
+    </div>
+
+    <div class="card card-flat p-3">
+      <button type="submit" class="btn btn-midnight" id="submitBtn">Save training</button>
+    </div>
+  </form>
+
+  <template id="stepTemplate">
+    <div class="training-step-card mb-3" draggable="true" data-step-id="">
+      <div class="training-step-header">
+        <div class="left">
+          <span class="drag-handle" title="Drag to reorder" aria-hidden="true">⋮⋮</span>
+          <div class="text-truncate">
+            <div class="step-number">Step <span data-step-num></span></div>
+            <div class="text-muted-soft small">Drag to reorder • Remove if needed</div>
+          </div>
+        </div>
+        <button type="button" class="btn btn-sm btn-outline-danger" data-remove-step>Remove</button>
+      </div>
+
+      <div class="training-step-body">
+        <div class="step-grid">
+          <div class="step-image-wrap">
+            <label class="form-label mb-0">Step image</label>
+            <img class="step-image-preview" alt="Step image preview" data-preview>
+            <input class="form-control" type="file" accept="image/*" data-image-file>
+            <input class="form-control" type="url" placeholder="…or paste an image URL" data-image-url>
+            <div class="text-muted-soft small">Uploading a file overrides the URL preview.</div>
+          </div>
+
+          <div class="step-fields">
+            <div class="step-title-row">
+              <label class="form-label" data-title-label>Step title</label>
+              <input class="form-control" type="text" data-title required>
+              <div class="field-error" data-err-title style="display:none;"></div>
+            </div>
+
+            <div class="step-desc-row">
+              <label class="form-label">Step description</label>
+              <textarea class="form-control" rows="5" data-description required></textarea>
+              <div class="field-error" data-err-desc style="display:none;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  {{ form_data.steps|json_script:"initial-steps" }}
+  {{ errors|json_script:"server-errors" }}
+
+  <script>
+    (function () {
+      const stepsRoot = document.getElementById("steps");
+      const addBtn = document.getElementById("addStepBtn");
+      const idsInput = document.getElementById("step_ids");
+      const template = document.getElementById("stepTemplate");
+
+      const initial = JSON.parse(document.getElementById("initial-steps").textContent || "[]");
+      const serverErrors = JSON.parse(document.getElementById("server-errors").textContent || "{}");
+
+      const state = {
+        steps: Array.isArray(initial) && initial.length ? initial.map(s => ({
+          id: s.id || ("s" + Math.random().toString(16).slice(2)),
+          title: s.title || "",
+          description: s.description || "",
+          image_url: s.image_url || ""
+        })) : [{ id: "s1", title: "", description: "", image_url: "" }]
+      };
+
+      function syncHiddenIds() {
+        idsInput.value = state.steps.map(s => s.id).join(",");
+      }
+
+      function setPreviewFromUrl(imgEl, url) {
+        if (!url) {
+          imgEl.removeAttribute("src");
+          imgEl.style.opacity = "0.35";
+          return;
+        }
+        imgEl.src = url;
+        imgEl.style.opacity = "1";
+      }
+
+      function setPreviewFromFile(imgEl, file) {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          imgEl.src = reader.result;
+          imgEl.style.opacity = "1";
+        };
+        reader.readAsDataURL(file);
+      }
+
+      function render() {
+        stepsRoot.innerHTML = "";
+        syncHiddenIds();
+
+        state.steps.forEach((step, idx) => {
+          const node = template.content.firstElementChild.cloneNode(true);
+          node.dataset.stepId = step.id;
+
+          node.querySelector("[data-step-num]").textContent = String(idx + 1);
+
+          const removeBtn = node.querySelector("[data-remove-step]");
+          removeBtn.disabled = state.steps.length === 1;
+          removeBtn.addEventListener("click", () => {
+            state.steps = state.steps.filter(s => s.id !== step.id);
+            render();
+          });
+
+          const title = node.querySelector("[data-title]");
+          const desc = node.querySelector("[data-description]");
+          const imageUrl = node.querySelector("[data-image-url]");
+          const imageFile = node.querySelector("[data-image-file]");
+          const preview = node.querySelector("[data-preview]");
+
+          // bind names so Django can parse easily
+          title.name = `step_${step.id}_title`;
+          desc.name = `step_${step.id}_description`;
+          imageUrl.name = `step_${step.id}_image_url`;
+          imageFile.name = `step_${step.id}_image_file`;
+
+          title.value = step.title;
+          desc.value = step.description;
+          imageUrl.value = step.image_url;
+
+          preview.style.opacity = "0.35";
+          setPreviewFromUrl(preview, step.image_url);
+
+          title.addEventListener("input", (e) => {
+            step.title = e.target.value;
+          });
+          desc.addEventListener("input", (e) => {
+            step.description = e.target.value;
+          });
+          imageUrl.addEventListener("input", (e) => {
+            step.image_url = e.target.value;
+            // only update URL preview if no file selected
+            if (!imageFile.files || !imageFile.files[0]) {
+              setPreviewFromUrl(preview, step.image_url);
+            }
+          });
+          imageFile.addEventListener("change", (e) => {
+            const f = e.target.files && e.target.files[0];
+            if (f) setPreviewFromFile(preview, f);
+            else setPreviewFromUrl(preview, step.image_url);
+          });
+
+          // server-side field errors (if any)
+          const errTitle = node.querySelector("[data-err-title]");
+          const errDesc = node.querySelector("[data-err-desc]");
+          const et = serverErrors[`step_${step.id}_title`];
+          const ed = serverErrors[`step_${step.id}_description`];
+          if (et) { errTitle.textContent = et; errTitle.style.display = "block"; }
+          if (ed) { errDesc.textContent = ed; errDesc.style.display = "block"; }
+
+          // drag & drop reordering
+          node.addEventListener("dragstart", (e) => {
+            e.dataTransfer.setData("text/plain", step.id);
+            e.dataTransfer.effectAllowed = "move";
+            node.style.opacity = "0.65";
+          });
+          node.addEventListener("dragend", () => {
+            node.style.opacity = "1";
+          });
+          node.addEventListener("dragover", (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+          });
+          node.addEventListener("drop", (e) => {
+            e.preventDefault();
+            const fromId = e.dataTransfer.getData("text/plain");
+            const toId = step.id;
+            if (!fromId || fromId === toId) return;
+            const fromIdx = state.steps.findIndex(s => s.id === fromId);
+            const toIdx = state.steps.findIndex(s => s.id === toId);
+            if (fromIdx < 0 || toIdx < 0) return;
+            const [moved] = state.steps.splice(fromIdx, 1);
+            state.steps.splice(toIdx, 0, moved);
+            render();
+          });
+
+          stepsRoot.appendChild(node);
+        });
+      }
+
+      addBtn.addEventListener("click", () => {
+        const newId = "s" + Math.random().toString(16).slice(2);
+        state.steps.push({ id: newId, title: "", description: "", image_url: "" });
+        render();
+        const last = stepsRoot.querySelector(`[data-step-id="${newId}"] input[name="step_${newId}_title"]`);
+        if (last) last.focus();
+      });
+
+      // client-side validation to prevent empty submits
+      document.querySelector("form").addEventListener("submit", (e) => {
+        let ok = true;
+        const trainingTitle = document.getElementById("training_title");
+        if (!trainingTitle.value.trim()) ok = false;
+
+        state.steps.forEach(s => {
+          const t = document.querySelector(`input[name="step_${s.id}_title"]`);
+          const d = document.querySelector(`textarea[name="step_${s.id}_description"]`);
+          if (!t || !d) return;
+          if (!t.value.trim()) ok = false;
+          if (!d.value.trim()) ok = false;
+        });
+
+        if (!ok) {
+          e.preventDefault();
+          alert("Please fill in the training title, and ensure every step has a title and description.");
+        }
+      });
+
+      render();
+    })();
+  </script>
+{% endblock %}
